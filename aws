@@ -1,0 +1,19 @@
+#!/bin/bash
+vpc_id=$(aws ec2 describe-vpcs | grep -o -P 'vpc-0.{0,16}')
+sg_id=$(aws ec2 create-security-group --group-name sg$RANDOM --description "allow 22&80" --vpc-id $vpc_id | grep -o -P '.{0,0}sg.{0,18}')
+sleep 2
+my_pub_ip=$(dig +short myip.opendns.com @resolver1.opendns.com)
+aws ec2 authorize-security-group-ingress --group-id $sg_id --protocol tcp --port 22 --cidr $my_pub_ip/32
+aws ec2 authorize-security-group-ingress --group-id $sg_id --protocol tcp --port 80 --cidr $my_pub_ip/32
+aws ec2 run-instances --image-id ami-0767046d1677be5a0 \
+--count 1 --instance-type t2.micro --key-name aws \
+--security-group-ids $sg_id --user-data file://startup_inst 
+sleep 35 
+pub_ip=$(aws ec2 describe-instances \
+  --query "Reservations[*].Instances[*].PublicIpAddress" \
+  --output=text)
+echo "Instance public ip is : $pub_ip "  
+
+
+
+
